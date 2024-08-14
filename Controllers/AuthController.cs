@@ -1,70 +1,59 @@
-﻿using inventory_system.Data;
-using inventory_system.Models;
+﻿using inventory_system.Models;
+using inventory_system.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace inventory_system.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : Controller
+    public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IConfiguration _configuration;
+        private readonly IAuthService _authService;
 
-        public AuthController(ApplicationDbContext context, IConfiguration configuration)
+        public AuthController(IAuthService authService)
         {
-            _context = context;
-            _configuration = configuration;
+            _authService = authService;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(User user)
         {
-            // Hash the password before saving it
-            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
+            {
+                return BadRequest("Username and password are required.");
+            }
 
-            return Ok();
+            var result = await _authService.RegisterUser(user);
+            if (!result)
+            {
+                return Conflict("Username already exists.");
+            }
+
+            return Ok("User registered successfully.");
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(User user)
+        public async Task<IActionResult> Login(LoginModel model)
         {
-            var dbUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == user.Username);
-            if (dbUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, dbUser.Password))
+            var (accessToken, refreshToken) = await _authService.LoginUser(model.Username, model.Password);
+            if (accessToken == null)
             {
                 return Unauthorized();
             }
 
-            var token = GenerateJwtToken(dbUser);
-
-            return Ok(new { Token = token });
+            return Ok(new { AccessToken = accessToken, RefreshToken = refreshToken });
         }
 
-        private string GenerateJwtToken(User user)
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenModel model)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var claims = new[]
+            var (accessToken, refreshToken) = await _authService.RefreshToken(model.RefreshToken);
+            if (accessToken == null)
             {
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Role, user.Role)
-        };
+                return BadRequest("Invalid refresh token");
+            }
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpireMinutes"])),
-                signingCredentials: creds);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return Ok(new { AccessToken = accessToken, RefreshToken = refreshToken });
         }
     }
 }

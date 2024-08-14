@@ -1,5 +1,5 @@
-﻿using inventory_system.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using inventory_system.Models;
 
 namespace inventory_system.Data
 {
