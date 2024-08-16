@@ -9,6 +9,7 @@ using dotenv.net;
 DotEnv.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
        options.UseSqlServer(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")));
