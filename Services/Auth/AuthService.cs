@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
-namespace inventory_system.Services
+namespace inventory_system.Services.Auth
 {
     public class AuthService : IAuthService
     {

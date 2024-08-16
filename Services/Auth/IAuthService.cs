@@ -1,6 +1,6 @@
 using inventory_system.Models;
 
-namespace inventory_system.Services
+namespace inventory_system.Services.Auth
 {
     public interface IAuthService
     {

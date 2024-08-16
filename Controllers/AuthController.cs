@@ -1,5 +1,6 @@
 ﻿using inventory_system.Models;
 using inventory_system.Services;
+using inventory_system.Services.Auth;
 using Microsoft.AspNetCore.Mvc;
 
 namespace inventory_system.Controllers
@@ -20,16 +21,29 @@ namespace inventory_system.Controllers
         {
             if (string.IsNullOrWhiteSpace(user.Username) || string.IsNullOrWhiteSpace(user.Password))
             {
-                return BadRequest("Username and password are required.");
+                return BadRequest(new ApiResponse 
+                { 
+                    Success = false, 
+                    Message = "Username and password are required." 
+                });
             }
 
             var result = await _authService.RegisterUser(user);
             if (!result)
             {
-                return Conflict("Username already exists.");
+                 return Conflict(new ApiResponse 
+                { 
+                    Success = false, 
+                    Message = "Username already exists." 
+                });
             }
 
-            return Ok("User registered successfully.");
+            return Ok(new ApiResponse 
+            { 
+                Success = true, 
+                Message = "User registered successfully.",
+                Data = new { user.Username }
+            });
         }
 
         [HttpPost("login")]
@@ -38,10 +52,19 @@ namespace inventory_system.Controllers
             var (accessToken, refreshToken) = await _authService.LoginUser(model.Username, model.Password);
             if (accessToken == null)
             {
-                return Unauthorized();
+                return Unauthorized(new ApiResponse 
+                { 
+                    Success = false, 
+                    Message = "Invalid username or password." 
+                });
             }
 
-            return Ok(new { AccessToken = accessToken, RefreshToken = refreshToken });
+            return Ok(new ApiResponse 
+            { 
+                Success = true, 
+                Message = "Login successful.",
+                Data = new { accessToken, refreshToken }
+            });
         }
 
         [HttpPost("refresh-token")]
@@ -50,10 +73,19 @@ namespace inventory_system.Controllers
             var (accessToken, refreshToken) = await _authService.RefreshToken(model.RefreshToken);
             if (accessToken == null)
             {
-                return BadRequest("Invalid refresh token");
+                return BadRequest(new ApiResponse 
+                { 
+                    Success = false, 
+                    Message = "Invalid refresh token." 
+                });
             }
 
-            return Ok(new { AccessToken = accessToken, RefreshToken = refreshToken });
+            return Ok(new ApiResponse 
+            { 
+                Success = true, 
+                Message = "Token refreshed successfully.",
+                Data = new { accessToken, refreshToken }
+            });
         }
     }
 }
