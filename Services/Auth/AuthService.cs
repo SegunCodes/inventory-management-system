@@ -80,7 +80,12 @@ namespace inventory_system.Services.Auth
 
         public string GenerateJwtToken(User user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new ArgumentException("JWT key is not configured.");
+            }
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var claims = new[]
             {
@@ -89,10 +94,10 @@ namespace inventory_system.Services.Auth
             };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer:  Environment.GetEnvironmentVariable("JWT_ISSUER"),
+                audience:  Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(_configuration["Jwt:ExpireMinutes"])),
+                expires: DateTime.Now.AddMinutes(double.Parse(Environment.GetEnvironmentVariable("JWT_EXPIRE_MINUTES"))),
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
